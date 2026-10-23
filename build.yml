@@ -1,0 +1,1762 @@
+name: Build Dream APK
+
+# Satu file ini berisi seluruh proyek Dream. Saat dijalankan, ia menulis
+# semua file proyek lalu membangun APK-nya. Tidak perlu file lain di repo.
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tulis file konfigurasi dan resource
+        run: |
+          set -e
+          cat > settings.gradle.kts <<'DREAM_EOF_1'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "Dream"
+          include(":app")
+          DREAM_EOF_1
+          cat > build.gradle.kts <<'DREAM_EOF_1'
+          plugins {
+              id("com.android.application") version "8.5.2" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.20" apply false
+              id("org.jetbrains.kotlin.plugin.compose") version "2.0.20" apply false
+          }
+          DREAM_EOF_1
+          cat > gradle.properties <<'DREAM_EOF_1'
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          kotlin.code.style=official
+          DREAM_EOF_1
+          cat > .gitignore <<'DREAM_EOF_1'
+          build/
+          .gradle/
+          .idea/
+          local.properties
+          *.iml
+          .DS_Store
+          DREAM_EOF_1
+          mkdir -p app
+          cat > app/build.gradle.kts <<'DREAM_EOF_1'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+              id("org.jetbrains.kotlin.plugin.compose")
+          }
+
+          android {
+              namespace = "com.dream.boost"
+              compileSdk = 34
+
+              defaultConfig {
+                  applicationId = "com.dream.boost"
+                  minSdk = 26
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+
+              buildTypes {
+                  release {
+                      isMinifyEnabled = false
+                      // ditandatangani dengan debug key supaya APK langsung bisa di-install
+                      signingConfig = signingConfigs.getByName("debug")
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = "17" }
+              buildFeatures { compose = true }
+
+              lint {
+                  abortOnError = false
+                  checkReleaseBuilds = false
+              }
+              packaging {
+                  resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+              }
+          }
+
+          dependencies {
+              implementation(platform("androidx.compose:compose-bom:2024.09.00"))
+              implementation("androidx.compose.ui:ui")
+              implementation("androidx.compose.foundation:foundation")
+              implementation("androidx.compose.animation:animation")
+              implementation("androidx.compose.material3:material3")
+              implementation("androidx.activity:activity-compose:1.9.2")
+              implementation("androidx.core:core-ktx:1.13.1")
+              implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+              implementation("dev.rikka.shizuku:api:13.1.5")
+              implementation("dev.rikka.shizuku:provider:13.1.5")
+          }
+          DREAM_EOF_1
+          mkdir -p app/src/main
+          cat > app/src/main/AndroidManifest.xml <<'DREAM_EOF_1'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+
+              <queries>
+                  <package android:name="moe.shizuku.privileged.api" />
+              </queries>
+
+              <application
+                  android:allowBackup="false"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:label="@string/app_name"
+                  android:theme="@style/Theme.Dream">
+
+                  <provider
+                      android:name="rikka.shizuku.ShizukuProvider"
+                      android:authorities="${applicationId}.shizuku"
+                      android:enabled="true"
+                      android:exported="true"
+                      android:multiprocess="false"
+                      android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          DREAM_EOF_1
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/strings.xml <<'DREAM_EOF_1'
+          <resources>
+              <string name="app_name">Dream</string>
+          </resources>
+          DREAM_EOF_1
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/themes.xml <<'DREAM_EOF_1'
+          <resources>
+              <style name="Theme.Dream" parent="android:Theme.Material.NoActionBar">
+                  <item name="android:windowBackground">@android:color/black</item>
+                  <item name="android:statusBarColor">@android:color/transparent</item>
+                  <item name="android:navigationBarColor">@android:color/transparent</item>
+              </style>
+          </resources>
+          DREAM_EOF_1
+          mkdir -p app/src/main/res/mipmap-anydpi-v26
+          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'DREAM_EOF_1'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_launcher_background" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+          DREAM_EOF_1
+          mkdir -p app/src/main/res/mipmap-anydpi-v26
+          cat > app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml <<'DREAM_EOF_1'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_launcher_background" />
+              <foreground android:drawable="@drawable/ic_launcher_foreground" />
+          </adaptive-icon>
+          DREAM_EOF_1
+          mkdir -p app/src/main/res/drawable
+          cat > app/src/main/res/drawable/ic_launcher_background.xml <<'DREAM_EOF_1'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:aapt="http://schemas.android.com/aapt"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <path android:pathData="M0,0h108v108h-108z">
+                  <aapt:attr name="android:fillColor">
+                      <gradient
+                          android:type="radial"
+                          android:centerX="54"
+                          android:centerY="54"
+                          android:gradientRadius="76">
+                          <item android:offset="0.0" android:color="#FF3A0A6E" />
+                          <item android:offset="0.55" android:color="#FF14002B" />
+                          <item android:offset="1.0" android:color="#FF000000" />
+                      </gradient>
+                  </aapt:attr>
+              </path>
+              <path android:fillColor="#AAFFFFFF" android:pathData="M13.1,20a0.9,0.9 0 1,0 1.8,0a0.9,0.9 0 1,0 -1.8,0z" />
+              <path android:fillColor="#88E9D5FF" android:pathData="M90.2,14a0.8,0.8 0 1,0 1.6,0a0.8,0.8 0 1,0 -1.6,0z" />
+              <path android:fillColor="#99FFFFFF" android:pathData="M95.1,78a1,1 0 1,0 2,0a1,1 0 1,0 -2,0z" />
+              <path android:fillColor="#88E9D5FF" android:pathData="M10.2,88a0.8,0.8 0 1,0 1.6,0a0.8,0.8 0 1,0 -1.6,0z" />
+              <path android:fillColor="#77FFFFFF" android:pathData="M30.3,8a0.7,0.7 0 1,0 1.4,0a0.7,0.7 0 1,0 -1.4,0z" />
+              <path android:fillColor="#77FFFFFF" android:pathData="M78.3,96a0.7,0.7 0 1,0 1.4,0a0.7,0.7 0 1,0 -1.4,0z" />
+          </vector>
+          DREAM_EOF_1
+          mkdir -p app/src/main/res/drawable
+          cat > app/src/main/res/drawable/ic_launcher_foreground.xml <<'DREAM_EOF_1'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:aapt="http://schemas.android.com/aapt"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+
+              <path android:pathData="M54,54m-31,0a31,31 0 1,0 62,0a31,31 0 1,0 -62,0z">
+                  <aapt:attr name="android:fillColor">
+                      <gradient
+                          android:type="radial"
+                          android:centerX="54"
+                          android:centerY="54"
+                          android:gradientRadius="31">
+                          <item android:offset="0.0" android:color="#00A855F7" />
+                          <item android:offset="0.5" android:color="#00A855F7" />
+                          <item android:offset="0.68" android:color="#66A855F7" />
+                          <item android:offset="1.0" android:color="#00A855F7" />
+                      </gradient>
+                  </aapt:attr>
+              </path>
+
+              <group android:pivotX="54" android:pivotY="54" android:rotation="-18">
+                  <path
+                      android:fillType="evenOdd"
+                      android:pathData="M21,54a33,10 0 1,0 66,0a33,10 0 1,0 -66,0zM30,54a24,6 0 1,0 48,0a24,6 0 1,0 -48,0z">
+                      <aapt:attr name="android:fillColor">
+                          <gradient
+                              android:type="linear"
+                              android:startX="21"
+                              android:startY="54"
+                              android:endX="87"
+                              android:endY="54">
+                              <item android:offset="0.0" android:color="#FF5B21B6" />
+                              <item android:offset="0.5" android:color="#FFF5D0FE" />
+                              <item android:offset="1.0" android:color="#FFC026D3" />
+                          </gradient>
+                      </aapt:attr>
+                  </path>
+              </group>
+
+              <path
+                  android:pathData="M34,52a20,20 0 0,1 40,0"
+                  android:strokeWidth="2.6"
+                  android:strokeLineCap="round"
+                  android:fillColor="#00000000">
+                  <aapt:attr name="android:strokeColor">
+                      <gradient
+                          android:type="linear"
+                          android:startX="34"
+                          android:startY="52"
+                          android:endX="74"
+                          android:endY="52">
+                          <item android:offset="0.0" android:color="#00B24BFF" />
+                          <item android:offset="0.5" android:color="#FFF5D0FE" />
+                          <item android:offset="1.0" android:color="#00B24BFF" />
+                      </gradient>
+                  </aapt:attr>
+              </path>
+
+              <path
+                  android:fillColor="#FF000000"
+                  android:strokeColor="#FFC084FC"
+                  android:strokeWidth="1.1"
+                  android:pathData="M36,54a18,18 0 1,0 36,0a18,18 0 1,0 -36,0z" />
+
+              <group android:pivotX="54" android:pivotY="54" android:rotation="-18">
+                  <path android:pathData="M21,54a33,10 0 0,0 66,0L78,54a24,6 0 0,1 -48,0z">
+                      <aapt:attr name="android:fillColor">
+                          <gradient
+                              android:type="linear"
+                              android:startX="21"
+                              android:startY="54"
+                              android:endX="87"
+                              android:endY="54">
+                              <item android:offset="0.0" android:color="#FF5B21B6" />
+                              <item android:offset="0.5" android:color="#FFF5D0FE" />
+                              <item android:offset="1.0" android:color="#FFC026D3" />
+                          </gradient>
+                      </aapt:attr>
+                  </path>
+              </group>
+          </vector>
+          DREAM_EOF_1
+          # ===== lanjut ke bagian 2 =====
+# ===== bagian 2 =====
+      - name: Tulis skrip Nova Boost
+        run: |
+          set -e
+          mkdir -p app/src/main/assets
+          cat > app/src/main/assets/nova_boost_v1.sh <<'DREAM_EOF_2'
+          #!/system/bin/sh
+          # =====================================================================
+          #  NOVA BOOST V1  -  KENPOL   (dipakai oleh aplikasi DREAM)
+          #  OTG Bypass (GG Mouse Pro 2/3/Flado, Nebula, SensiX, Red Corner)
+          #  + WhatsApp / WhatsApp Business / Discord dijaga  + Free Fire / FF MAX
+          #  Jalankan lewat shell ADB / Shizuku (uid shell). Tanpa root.
+          #
+          #    sh nova_boost_v1.sh             KENPOL: semua fitur aktif
+          #    sh nova_boost_v1.sh -s          mode aman: tanpa force-stop, GOS, blok background
+          #    sh nova_boost_v1.sh status      lihat kondisi sekarang (tidak mengubah apa pun)
+          #    sh nova_boost_v1.sh find kata   cari nama paket terpasang (mis. find sensi red)
+          #    sh nova_boost_v1.sh list        daftar semua app pihak ketiga
+          #    sh nova_boost_v1.sh off         kembalikan pengaturan seperti semula
+          # =====================================================================
+
+          # ----------------------------- KONFIGURASI ---------------------------
+          # APP YANG DILINDUNGI: tidak pernah di-kill / force-stop, selalu lolos Doze
+          # dan batas baterai. Pola regex, tidak peka huruf besar/kecil; hanya yang
+          # terpasang yang diproses (hasil deteksi dicetak tiap kali script jalan).
+          RX_GGMP='gg.*mouse|ggmp|gg\.mp|flado'   # GG Mouse Pro 2 / 3 / varian Flado
+          RX_NEBULA='nebula'                       # Nebula Touch / Nebula Mouse
+          RX_SENSIX='sensi.?x'                     # SensiX
+          RX_REDC='red.?corner'                    # Red Corner
+          RX_WA='^com\.whatsapp$'                  # WhatsApp Messenger
+          RX_WAB='^com\.whatsapp\.w4b$'            # WhatsApp Business
+          RX_DISCORD='^com\.discord$'              # Discord
+          KEEP_EXTRA=${KEEP_EXTRA:-}               # tambahan paket persis, pisah spasi
+          GAMES='freefire|mobile\.legends'         # game (Free Fire, FF MAX, Mobile Legends)
+
+          # Ikut dilindungi (alat terminal/Shizuku + VPN/proxy/Discord apa pun)
+          KEEP="moe.shizuku.privileged.api me.piebridge.brevent com.termux in.sunilpaulmathew.ashell $KEEP_EXTRA"
+          KEEP_PATTERN='vpn|proxy|wireguard|clash|v2ray|xray|shadowsocks|discord'
+
+          NOBG="com.android.vending"               # dilarang jalan di background saat boost
+          GOS_PKGS="com.samsung.android.game.gos com.enhance.gameservice"
+
+          DND_MODE=${DND_MODE:-priority}           # priority | alarms | none | off (tanpa DND)
+          ANIM=${ANIM:-0.5}                        # skala animasi sistem (0 = mati, 1 = normal)
+          POINTER_SPEED=${POINTER_SPEED:-}         # kecepatan kursor mouse OTG, -7..7 (kosong = tidak diubah)
+          HOT_T=${HOT_T:-420}                      # batas suhu baterai (per 0.1 C): 420 = 42.0 C
+          AUTO_LAUNCH=${AUTO_LAUNCH:-}             # mis. com.dts.freefiremax (kosong = tidak buka apa pun)
+
+          # Saklar fitur: 1 = aktif, 0 = lewati
+          F_KILL=${F_KILL:-1}     # force-stop app pihak ketiga yang tidak dilindungi
+          F_GOS=${F_GOS:-1}       # Samsung: matikan Game Optimizing Service (HP bisa lebih panas)
+          F_NOBG=${F_NOBG:-1}     # blok app di NOBG jalan di background
+          F_NET=${F_NET:-1}       # Wi-Fi low-latency + matikan scan background
+          F_ANIM=${F_ANIM:-1}     # percepat animasi sistem
+          F_DEX=${F_DEX:-1}       # kompilasi AOT alat & game (pertama kali agak lama)
+          F_KBD=${F_KBD:-1}       # keyboard OTG: keyboard layar tidak muncul
+          F_STAYON=${F_STAYON:-0} # layar tetap menyala saat dicas (opsional)
+          # --- saklar tambahan dari aplikasi DREAM ---
+          F_PHANTOM=${F_PHANTOM:-1}   # langkah 1: Phantom Process Killer OFF
+          F_DOZE=${F_DOZE:-1}         # langkah 2: whitelist Doze + batas baterai
+          F_OTG=${F_OTG:-1}           # langkah 3: OTG bypass
+          F_FREEZER=${F_FREEZER:-1}   # langkah 4: anti-kill latar belakang
+          F_HZ=${F_HZ:-1}             # langkah 5: kunci refresh rate
+          F_GAME=${F_GAME:-1}         # langkah 6: mode performa game
+          F_DND=${F_DND:-1}           # langkah 7: mode DND
+          F_DEXSUP=${F_DEXSUP:-1}     # langkah 8: dukungan DeX / freeform
+          F_RAM=${F_RAM:-1}           # langkah 14: bersihkan RAM & cache
+
+          BK=${BK:-/data/local/tmp/nova_boost_v1.bak}
+          TMP=${TMPDIR:-/data/local/tmp}
+          # ---------------------------------------------------------------------
+
+          MODE=on; Q=""
+          for a in "$@"; do
+            case "$a" in
+              off) MODE=off ;;
+              status) MODE=status ;;
+              list) MODE=list ;;
+              find) MODE=find ;;
+              -s|safe) F_KILL=0; F_GOS=0; F_NOBG=0 ;;
+              -a) ;;
+              *) Q="$Q $a" ;;
+            esac
+          done
+
+          MYID=$(id -u)
+          case "$MYID" in
+            0|2000) ;;
+            *) echo "Harus dijalankan sebagai shell (adb shell / Shizuku)."; exit 1 ;;
+          esac
+
+          say()   { echo "$*"; }
+          quiet() { "$@" </dev/null >/dev/null 2>&1; }
+          count() { echo $#; }
+          skip()  { say "   dilewati"; }
+          MEM()   { sed -n 's/^MemAvailable: *\([0-9]*\) kB.*/\1/p' /proc/meminfo; }
+          N=0; TOTAL=14
+          step()  { N=$((N+1)); say "[$N/$TOTAL] $*"; }
+          # simpan nilai lama sekali saja, lalu tulis nilai baru
+          save()   { grep -qs "^$1 $2 " "$BK" || echo "$1 $2 $(settings get "$1" "$2" 2>/dev/null)" >> "$BK"; }
+          sput()   { save "$1" "$2"; quiet settings put "$1" "$2" "$3"; }
+          dcsave() { grep -qs "^dc $1 $2 " "$BK" || echo "dc $1 $2 $(device_config get "$1" "$2" 2>/dev/null)" >> "$BK"; }
+          dcput()  { dcsave "$1" "$2"; quiet device_config put "$1" "$2" "$3"; }
+          idle_has()    { dumpsys deviceidle whitelist 2>/dev/null | grep -q ",$1,"; }
+          is_disabled() { pm list packages -d 2>/dev/null | grep -q "package:$1\$"; }
+          shizuku_up()  { ps -A 2>/dev/null | grep -q shizuku_server || ps 2>/dev/null | grep -q shizuku_server; }
+
+          TOOLS="$RX_GGMP|$RX_NEBULA|$RX_SENSIX|$RX_REDC"
+          COMMS="$RX_WA|$RX_WAB|$RX_DISCORD"
+          ALLPKG=$(pm list packages 2>/dev/null | sed 's/^package://')
+          TOOL_PKGS=$(echo "$ALLPKG" | grep -iE "$TOOLS")
+          COMM_PKGS=$(echo "$ALLPKG" | grep -iE "$COMMS")
+          GAME_PKGS=$(echo "$ALLPKG" | grep -iE "$GAMES")
+          PROTECT=""
+          for p in $TOOL_PKGS $COMM_PKGS $GAME_PKGS $KEEP; do
+            quiet pm path "$p" && PROTECT="$PROTECT $p"
+          done
+
+          banner() {
+            say "======================================"
+            say "   NOVA BOOST V1  -  K E N P O L"
+            say "======================================"
+            say "Android $(getprop ro.build.version.release) / $(getprop ro.product.model)"
+          }
+
+          row() {  # $1 = label, $2 = regex
+            m=$(echo "$ALLPKG" | grep -iE "$2")
+            if [ -n "$m" ]; then say "  [OK] $1: $(echo $m)"; else say "  [--] $1: belum terdeteksi"; fi
+          }
+
+          show_targets() {
+            say "Dilindungi (tidak ditutup di latar belakang):"
+            row "GG Mouse Pro 2/3/Flado" "$RX_GGMP"
+            row "Nebula Touch/Mouse" "$RX_NEBULA"
+            row "SensiX" "$RX_SENSIX"
+            row "Red Corner" "$RX_REDC"
+            row "WhatsApp" "$RX_WA"
+            row "WhatsApp Business" "$RX_WAB"
+            row "Discord" "$RX_DISCORD"
+            [ -n "$KEEP_EXTRA" ] && say "  [+] Tambahan: $KEEP_EXTRA"
+            say "Game:"
+            for p in $GAME_PKGS; do say "  - $p"; done
+            [ "$(count $GAME_PKGS)" = 0 ] && say "  (belum ada yang cocok)"
+          }
+
+          show_status() {
+            B=$(dumpsys battery 2>/dev/null)
+            LV=$(echo "$B" | sed -n 's/^ *level: *//p' | head -1)
+            TP=$(echo "$B" | sed -n 's/^ *temperature: *//p' | head -1)
+            TPS="?"; [ -n "$TP" ] && TPS="$((TP / 10)).$((TP % 10)) C"
+            case "$(settings get global zen_mode 2>/dev/null)" in
+              1) DN="prioritas" ;; 2) DN="senyap total" ;; 3) DN="alarm saja" ;; *) DN="mati" ;;
+            esac
+            case "$(settings get global settings_enable_monitor_phantom_procs 2>/dev/null)" in
+              false) PK="OFF" ;; *) PK="masih ON" ;;
+            esac
+            GS="-"
+            for p in $GOS_PKGS; do
+              quiet pm path "$p" || continue
+              if is_disabled "$p"; then GS="OFF"; else GS="aktif"; fi
+            done
+            if shizuku_up; then SZ="AKTIF"; else SZ="tidak terdeteksi"; fi
+            M=$(MEM)
+            say "------------- STATUS -------------"
+            say " RAM tersedia : $(( ${M:-0} / 1024 )) MB"
+            say " Baterai      : ${LV:-?}% / $TPS"
+            say " Refresh rate : min $(settings get system min_refresh_rate 2>/dev/null) / peak $(settings get system peak_refresh_rate 2>/dev/null)"
+            say " DND          : $DN"
+            say " Phantom Kill : $PK"
+            say " Samsung GOS  : $GS"
+            say " Shizuku      : $SZ"
+            say " Dilindungi   : $(count $PROTECT) paket"
+            say "----------------------------------"
+          }
+
+          # daftar pelindung untuk pembersihan RAM
+          build_keep() {
+            LAUNCHER=$(cmd package resolve-activity --brief -c android.intent.category.HOME -a android.intent.action.MAIN 2>/dev/null | tail -1 | cut -d/ -f1)
+            FG=$(dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | sed -n 's#.* \([A-Za-z0-9_.]*\)/.*#\1#p')
+            EXTRA=$( { settings get secure default_input_method
+                       settings get secure enabled_accessibility_services
+                       settings get secure enabled_notification_listeners; } 2>/dev/null |
+                     tr ':\n' '  ' | sed 's#/[^ ]*##g' )
+            KEEPALL=" $PROTECT $LAUNCHER $FG $EXTRA "
+          }
+          is_kept() {
+            case "$KEEPALL" in *" $1 "*) return 0 ;; esac
+            echo "$1" | grep -qiE "$KEEP_PATTERN|$TOOLS|$COMMS"
+          }
+
+          # kill proses cache/background (aman: am kill) KECUALI yang dilindungi
+          kill_bg() {
+            PKGF="$TMP/.nova_pk.$$"
+            echo "$ALLPKG" > "$PKGF"
+            KC=0
+            for p in $(ps -A 2>/dev/null | sed 's/.*[[:space:]]//' | cut -d: -f1 | sort -u | grep -Fxf "$PKGF"); do
+              is_kept "$p" && continue
+              quiet am kill "$p"
+              KC=$((KC+1))
+            done
+            rm -f "$PKGF"
+            say "   $KC proses latar belakang dibersihkan"
+          }
+
+          # force-stop semua app pihak ketiga, kecuali yang dilindungi
+          aggressive() {
+            K=0
+            for p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do
+              is_kept "$p" && continue
+              quiet am force-stop "$p"
+              K=$((K+1))
+            done
+            say "   $K app dihentikan (force-stop)"
+          }
+
+          # ===================================================================
+          do_on() {
+            banner
+            show_targets
+            RAM0=$(MEM)
+
+            # pengaman suhu: kalau HP sudah panas, lewati fitur yang menambah panas
+            HOT=0
+            TPG=$(dumpsys battery 2>/dev/null | sed -n 's/^ *temperature: *//p' | head -1)
+            case "$TPG" in ''|*[!0-9]*) TPG=0 ;; esac
+            if [ "$TPG" -ge "$HOT_T" ]; then
+              HOT=1; F_GOS=0; F_DEX=0
+              say "!! Suhu $((TPG / 10)).$((TPG % 10)) C (batas $((HOT_T / 10)) C): GOS-off, fixed-performance & AOT dilewati"
+            fi
+
+            step "Phantom Process Killer -> OFF"
+            if [ "$F_PHANTOM" = 1 ]; then
+            quiet device_config set_sync_disabled_for_tests persistent
+            dcput activity_manager max_phantom_processes 2147483647
+            sput global settings_enable_monitor_phantom_procs false
+            else skip; fi
+
+            step "Whitelist Doze + pembatasan baterai -> OFF"
+            if [ "$F_DOZE" = 1 ]; then
+            for p in $PROTECT; do
+              idle_has "$p" || echo "wl $p" >> "$BK"
+              quiet dumpsys deviceidle whitelist +"$p"
+              quiet cmd appops set "$p" RUN_IN_BACKGROUND allow
+              quiet cmd appops set "$p" RUN_ANY_IN_BACKGROUND allow
+              quiet am set-standby-bucket "$p" active
+            done
+            sput global app_standby_enabled 0
+            sput global adaptive_battery_management_enabled 0
+            sput global forced_app_standby_enabled 0
+            sput global app_auto_restriction_enabled false
+            sput global low_power 0
+            sput global low_power_trigger_level 0
+            quiet cmd power set-adaptive-power-saver-enabled false
+            else skip; fi
+
+            step "OTG BYPASS - jaga alat, chat & keyboard OTG"
+            if [ "$F_OTG" = 1 ]; then
+            for p in $PROTECT; do quiet am set-inactive "$p" false; done
+            sput global adb_allowed_connection_time 0     # izin ADB/Shizuku tidak kedaluwarsa
+            sput global always_finish_activities 0        # pastikan "Don't keep activities" mati
+            if [ "$F_KBD" = 1 ]; then sput secure show_ime_with_hard_keyboard 0; fi
+            if [ -n "$POINTER_SPEED" ]; then sput system pointer_speed "$POINTER_SPEED"; fi
+            if shizuku_up; then say "   Shizuku: AKTIF"
+            else say "   Shizuku: tidak terdeteksi (nyalakan dulu kalau mapper-mu pakai Shizuku)"; fi
+            else skip; fi
+
+            step "Anti-kill latar belakang (freezer, batas proses cache)"
+            if [ "$F_FREEZER" = 1 ]; then
+            dcput activity_manager_native_boot use_freezer false
+            sput global cached_apps_freezer disabled
+            dcput activity_manager max_cached_processes 64
+            say "   (pembekuan app cache baru mati penuh setelah reboot)"
+            else skip; fi
+
+            step "Kunci refresh rate ke maksimum"
+            if [ "$F_HZ" = 1 ]; then
+            HZ=0
+            for f in $(dumpsys display 2>/dev/null | grep -m1 'supportedModes \[' | grep -oE 'fps=[0-9]+(\.[0-9]+)?' | sed 's/fps=//'); do
+              i=${f%%.*}
+              d=0
+              case "$f" in *.*) d=$(echo "${f#*.}" | cut -c1) ;; esac
+              [ "${d:-0}" -ge 5 ] && i=$((i+1))
+              [ "$i" -gt "$HZ" ] && HZ=$i
+            done
+            [ "$HZ" -ge 60 ] || HZ=120
+            sput system min_refresh_rate "$HZ.0"
+            sput system peak_refresh_rate "$HZ.0"
+            say "   target ${HZ}Hz"
+            [ "$(settings get system min_refresh_rate 2>/dev/null)" = "$HZ.0" ] ||
+              say "   (ROM menolak - atur manual di Pengaturan > Layar > Refresh rate)"
+            else skip; fi
+
+            step "Mode performa game"
+            if [ "$F_GAME" = 1 ]; then
+            for p in $GAME_PKGS; do
+              quiet cmd game mode performance "$p" || quiet cmd game set --mode performance "$p"
+            done
+            if [ "$HOT" = 0 ]; then quiet cmd power set-fixed-performance-mode-enabled true; else skip; fi
+            else skip; fi
+
+            step "Mode DND ($DND_MODE)"
+            if [ "$F_DND" = 1 ]; then
+            if [ "$DND_MODE" = off ]; then skip
+            else
+              save global zen_mode
+              quiet cmd notification set_dnd "$DND_MODE"
+              if [ "$(settings get global zen_mode 2>/dev/null)" = 0 ]; then
+                case "$DND_MODE" in none) Z=2 ;; alarms) Z=3 ;; *) Z=1 ;; esac
+                quiet settings put global zen_mode "$Z"
+              fi
+            fi
+            else skip; fi
+
+            step "Dukungan DeX / jendela desktop"
+            if [ "$F_DEXSUP" = 1 ]; then
+            sput global enable_freeform_support 1
+            sput global force_resizable_activities 1
+            sput global enable_non_resizable_multi_window 1
+            case "$(getprop ro.product.manufacturer | tr 'A-Z' 'a-z')" in
+              samsung) ;;  # DeX bawaan Samsung sudah ada
+              *) sput global force_desktop_mode_on_external_displays 1 ;;
+            esac
+            if [ "$F_STAYON" = 1 ]; then sput global stay_on_while_plugged_in 7; fi
+            else skip; fi
+
+            step "Jaringan: Wi-Fi low-latency + stop scan background"
+            if [ "$F_NET" = 1 ]; then
+              quiet cmd wifi force-hi-perf-mode enabled
+              quiet cmd wifi force-low-latency-mode enabled
+              sput global wifi_scan_always_enabled 0
+              sput global ble_scan_always_enabled 0
+            else skip; fi
+
+            step "Samsung GOS (anti-throttle) -> OFF"
+            if [ "$F_GOS" = 1 ]; then
+              FOUND=0
+              for p in $GOS_PKGS; do
+                quiet pm path "$p" || continue
+                FOUND=1
+                is_disabled "$p" || echo "pkgdis $p" >> "$BK"
+                quiet pm disable-user --user 0 "$p"
+                quiet am force-stop "$p"
+                if is_disabled "$p"; then say "   $p: OFF (HP bisa lebih panas)"
+                else say "   $p: gagal dimatikan"; fi
+              done
+              [ "$FOUND" = 0 ] && say "   tidak ada di HP ini"
+            else skip; fi
+
+            step "Animasi sistem ${ANIM}x"
+            if [ "$F_ANIM" = 1 ]; then
+              sput global window_animation_scale "$ANIM"
+              sput global transition_animation_scale "$ANIM"
+              sput global animator_duration_scale "$ANIM"
+            else skip; fi
+
+            step "Blok app background ($NOBG)"
+            if [ "$F_NOBG" = 1 ]; then
+              for p in $NOBG; do
+                quiet pm path "$p" || continue
+                quiet cmd appops set "$p" RUN_IN_BACKGROUND deny
+                quiet cmd appops set "$p" RUN_ANY_IN_BACKGROUND deny
+                quiet am force-stop "$p"
+              done
+            else skip; fi
+
+            step "Kompilasi AOT alat & game (pertama kali bisa lama)"
+            if [ "$F_DEX" = 1 ]; then
+              for p in $TOOL_PKGS $GAME_PKGS; do quiet cmd package compile -m speed "$p"; done
+            else skip; fi
+
+            step "Bersihkan RAM & cache (app dilindungi tidak disentuh)"
+            if [ "$F_RAM" = 1 ]; then
+            build_keep
+            kill_bg
+            quiet pm trim-caches 999G
+            if [ "$MYID" = 0 ]; then sync; echo 3 > /proc/sys/vm/drop_caches; fi
+            if [ "$F_KILL" = 1 ]; then aggressive; else say "   (force-stop dilewati)"; fi
+            sleep 2
+            M=$(MEM)
+            say "   RAM tersedia: $(( ${RAM0:-0} / 1024 )) MB -> $(( ${M:-0} / 1024 )) MB"
+            else skip; fi
+
+            show_status
+            say "SELESAI. Batalkan lewat tombol Kembalikan di aplikasi."
+            if [ -n "$AUTO_LAUNCH" ]; then
+              say "Membuka $AUTO_LAUNCH ..."
+              quiet monkey -p "$AUTO_LAUNCH" -c android.intent.category.LAUNCHER 1
+            fi
+          }
+
+          # ===================================================================
+          do_off() {
+            say "== NOVA BOOST V1 - KEMBALIKAN PENGATURAN =="
+            if [ -f "$BK" ]; then
+              while read -r k1 k2 k3 k4; do
+                VAL="$k3${k4:+ $k4}"
+                case "$k1" in
+                  wl) quiet dumpsys deviceidle whitelist -"$k2" ;;
+                  pkgdis) quiet pm enable --user 0 "$k2" ;;
+                  dc)
+                    if [ -z "$k4" ] || [ "$k4" = null ]; then
+                      quiet device_config delete "$k2" "$k3"
+                    else
+                      quiet device_config put "$k2" "$k3" "$k4"
+                    fi ;;
+                  global|system|secure)
+                    if [ -z "$VAL" ] || [ "$VAL" = null ]; then
+                      quiet settings delete "$k1" "$k2"
+                    else
+                      quiet settings put "$k1" "$k2" "$VAL"
+                    fi ;;
+                esac
+              done < "$BK"
+              rm -f "$BK"
+            else
+              say "  (tidak ada backup nilai lama)"
+            fi
+            # sisa dari versi lama yang belum menyimpan nilai asli
+            [ "$(device_config get activity_manager max_phantom_processes 2>/dev/null)" = 2147483647 ] &&
+              quiet device_config delete activity_manager max_phantom_processes
+            quiet device_config set_sync_disabled_for_tests none
+            quiet cmd wifi force-hi-perf-mode disabled
+            quiet cmd wifi force-low-latency-mode disabled
+            for p in $PROTECT $NOBG; do
+              quiet cmd appops set "$p" RUN_IN_BACKGROUND default
+              quiet cmd appops set "$p" RUN_ANY_IN_BACKGROUND default
+            done
+            for p in $GAME_PKGS; do quiet cmd game mode standard "$p"; done
+            quiet cmd power set-fixed-performance-mode-enabled false
+            say "Selesai (kompilasi AOT dibiarkan, tidak merugikan)."
+            say "Sebagian pengaturan baru penuh setelah reboot."
+          }
+
+          do_status() { banner; show_targets; show_status; }
+          do_list()   { say "App pihak ketiga terpasang:"; pm list packages -3 2>/dev/null | sed 's/^package:/  /' | sort; }
+          do_find() {
+            if [ -z "$Q" ]; then say "Pakai: sh $0 find <kata> [kata2 ...]"; exit 1; fi
+            for w in $Q; do
+              say "== $w"
+              echo "$ALLPKG" | grep -i -- "$w" | sed 's/^/  /'
+            done
+          }
+
+          case "$MODE" in
+            off) do_off ;;
+            status) do_status ;;
+            list) do_list ;;
+            find) do_find ;;
+            *) do_on ;;
+          esac
+          DREAM_EOF_2
+          # ===== lanjut ke bagian 3 =====
+# ===== bagian 3 =====
+      - name: Tulis kode Kotlin (bagian 1)
+        run: |
+          set -e
+          mkdir -p app/src/main/java/com/dream/boost
+          cat > app/src/main/java/com/dream/boost/MainActivity.kt <<'DREAM_EOF_3'
+          package com.dream.boost
+
+          import android.graphics.Color
+          import android.os.Bundle
+          import androidx.activity.ComponentActivity
+          import androidx.activity.SystemBarStyle
+          import androidx.activity.compose.setContent
+          import androidx.activity.enableEdgeToEdge
+
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  enableEdgeToEdge(
+                      statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+                      navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+                  )
+                  setContent { DreamApp() }
+              }
+          }
+          DREAM_EOF_3
+          mkdir -p app/src/main/java/com/dream/boost
+          cat > app/src/main/java/com/dream/boost/ShizukuShell.kt <<'DREAM_EOF_3'
+          package com.dream.boost
+
+          import android.content.Context
+          import android.content.pm.PackageManager
+          import rikka.shizuku.Shizuku
+          import java.io.BufferedReader
+          import java.io.InputStreamReader
+
+          /** Semua hal yang menyentuh Shizuku ada di sini. */
+          object ShizukuShell {
+
+              const val SHIZUKU_PKG = "moe.shizuku.privileged.api"
+              private const val REMOTE_SCRIPT = "/data/local/tmp/dream_nova.sh"
+              private const val ASSET_NAME = "nova_boost_v1.sh"
+
+              @Volatile
+              private var current: Process? = null
+
+              /** Layanan Shizuku sedang berjalan? */
+              fun binderUp(): Boolean = try {
+                  Shizuku.pingBinder()
+              } catch (_: Throwable) {
+                  false
+              }
+
+              /** Aplikasi ini sudah diberi izin oleh Shizuku? */
+              fun granted(): Boolean = try {
+                  binderUp() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+              } catch (_: Throwable) {
+                  false
+              }
+
+              /** True kalau pengguna pernah menolak permanen ("jangan tanya lagi"). */
+              fun permanentlyDenied(): Boolean = try {
+                  Shizuku.shouldShowRequestPermissionRationale()
+              } catch (_: Throwable) {
+                  false
+              }
+
+              fun requestPermission() {
+                  try {
+                      Shizuku.requestPermission(1001)
+                  } catch (_: Throwable) {
+                  }
+              }
+
+              fun installed(ctx: Context): Boolean = try {
+                  ctx.packageManager.getPackageInfo(SHIZUKU_PKG, 0)
+                  true
+              } catch (_: Exception) {
+                  false
+              }
+
+              // Shizuku 13.1+ menyembunyikan newProcess(), jadi dipanggil lewat refleksi.
+              private fun newProcess(cmd: Array<String>): Process {
+                  val m = Shizuku::class.java.getDeclaredMethod(
+                      "newProcess",
+                      Array<String>::class.java,
+                      Array<String>::class.java,
+                      String::class.java
+                  )
+                  m.isAccessible = true
+                  return m.invoke(null, cmd, null, null) as Process
+              }
+
+              /** Salin skrip dari assets ke /data/local/tmp (bisa dibaca & ditulis uid shell). */
+              fun pushScript(ctx: Context) {
+                  val bytes = ctx.assets.open(ASSET_NAME).use { it.readBytes() }
+                  val p = newProcess(arrayOf("sh", "-c", "cat > $REMOTE_SCRIPT && chmod 755 $REMOTE_SCRIPT"))
+                  p.outputStream.use { it.write(bytes) }
+                  p.waitFor()
+              }
+
+              /**
+               * Jalankan skrip. [mode]: "" = boost, "status", atau "off".
+               * Setiap baris output dikirim ke [onLine]. Mengembalikan exit code.
+               */
+              fun runScript(
+                  mode: String,
+                  flags: Map<String, Boolean>,
+                  dnd: String,
+                  launchPkg: String,
+                  onLine: (String) -> Unit
+              ): Int {
+                  val env = buildString {
+                      flags.forEach { (k, v) -> append(k).append('=').append(if (v) 1 else 0).append(' ') }
+                      append("DND_MODE=").append(dnd).append(' ')
+                      append("KEEP_EXTRA=com.dream.boost ")
+                      if (launchPkg.isNotEmpty()) append("AUTO_LAUNCH=").append(launchPkg).append(' ')
+                  }
+                  val cmd = "${env}sh $REMOTE_SCRIPT $mode </dev/null 2>&1"
+                  val p = newProcess(arrayOf("sh", "-c", cmd))
+                  current = p
+                  try {
+                      try {
+                          p.outputStream.close()
+                      } catch (_: Exception) {
+                      }
+                      BufferedReader(InputStreamReader(p.inputStream)).use { r ->
+                          while (true) {
+                              val line = r.readLine() ?: break
+                              onLine(line)
+                          }
+                      }
+                      return p.waitFor()
+                  } finally {
+                      current = null
+                  }
+              }
+
+              fun stop() {
+                  try {
+                      current?.destroy()
+                  } catch (_: Throwable) {
+                  }
+              }
+          }
+          DREAM_EOF_3
+          mkdir -p app/src/main/java/com/dream/boost
+          cat > app/src/main/java/com/dream/boost/SpaceBackground.kt <<'DREAM_EOF_3'
+          package com.dream.boost
+
+          import androidx.compose.animation.core.animateFloatAsState
+          import androidx.compose.animation.core.tween
+          import androidx.compose.foundation.Canvas
+          import androidx.compose.foundation.layout.fillMaxSize
+          import androidx.compose.runtime.Composable
+          import androidx.compose.runtime.LaunchedEffect
+          import androidx.compose.runtime.getValue
+          import androidx.compose.runtime.mutableFloatStateOf
+          import androidx.compose.runtime.remember
+          import androidx.compose.runtime.setValue
+          import androidx.compose.runtime.withFrameNanos
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.geometry.Offset
+          import androidx.compose.ui.geometry.Size
+          import androidx.compose.ui.graphics.Brush
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.graphics.StrokeCap
+          import androidx.compose.ui.graphics.drawscope.DrawScope
+          import androidx.compose.ui.graphics.drawscope.Stroke
+          import androidx.compose.ui.graphics.drawscope.clipRect
+          import androidx.compose.ui.graphics.drawscope.withTransform
+          import androidx.compose.ui.graphics.lerp
+          import kotlin.math.cos
+          import kotlin.math.floor
+          import kotlin.math.hypot
+          import kotlin.math.max
+          import kotlin.math.pow
+          import kotlin.math.sin
+
+          private const val TAU = 6.2831855f
+          private const val FALLING_STARS = 150
+          private const val FAR_STARS = 110
+
+          // Angka acak deterministik 0..1 (tanpa state, jadi aman dipanggil tiap frame)
+          private fun rnd(a: Float, b: Float): Float {
+              val s = sin(a * 12.9898f + b * 78.233f) * 43758.547f
+              return s - floor(s)
+          }
+
+          /**
+           * Latar ruang angkasa hitam-ungu dengan blackhole bergerak.
+           * [holeY] = posisi vertikal blackhole (0..1 dari tinggi layar), [holeScale] = ukuran.
+           */
+          @Composable
+          fun SpaceBackground(holeY: Float, holeScale: Float, modifier: Modifier = Modifier) {
+              var t by remember { mutableFloatStateOf(0f) }
+              LaunchedEffect(Unit) {
+                  val start = withFrameNanos { it }
+                  while (true) {
+                      withFrameNanos { t = (it - start) / 1_000_000_000f }
+                  }
+              }
+              val hy by animateFloatAsState(holeY, tween(900), label = "holeY")
+              val hs by animateFloatAsState(holeScale, tween(900), label = "holeScale")
+
+              Canvas(modifier.fillMaxSize()) {
+                  drawSpace(t, hy, hs)
+              }
+          }
+
+          private fun DrawScope.drawSpace(t: Float, holeY: Float, holeScale: Float) {
+              val w = size.width
+              val h = size.height
+              val c = Offset(w / 2f, h * holeY)
+              val r = size.minDimension * 0.10f * holeScale
+
+              // 1) dasar: hitam -> ungu -> hitam
+              drawRect(
+                  brush = Brush.verticalGradient(
+                      listOf(
+                          Color(0xFF000000),
+                          Color(0xFF12002A),
+                          Color(0xFF2B0B52),
+                          Color(0xFF0B0016),
+                          Color(0xFF000000)
+                      )
+                  )
+              )
+
+              // 2) kabut ungu yang pelan bergeser
+              fun blob(cx: Float, cy: Float, rad: Float, col: Color) {
+                  drawCircle(
+                      brush = Brush.radialGradient(listOf(col, Color.Transparent), center = Offset(cx, cy), radius = rad),
+                      radius = rad,
+                      center = Offset(cx, cy)
+                  )
+              }
+              blob(w * 0.12f + sin(t * 0.20f) * w * 0.04f, h * 0.76f, w * 0.95f, Color(0x668B2BE2))
+              blob(w * 0.92f, h * 0.52f + sin(t * 0.17f) * h * 0.02f, w * 0.75f, Color(0x44C026D3))
+              blob(w * 0.80f + sin(t * 0.13f) * w * 0.03f, h * 0.06f, w * 0.70f, Color(0x444F2BD6))
+
+              // 3) bintang jauh (diam, berkedip)
+              for (i in 0 until FAR_STARS) {
+                  val fi = i.toFloat()
+                  val x = rnd(fi, 1.7f) * w
+                  val y = rnd(fi, 9.1f) * h
+                  val tw = (0.5f + 0.5f * sin(t * (0.8f + rnd(fi, 3.3f) * 1.8f) + fi)).coerceIn(0f, 1f)
+                  val rad = (0.5f + rnd(fi, 5.5f) * 1.1f) * density
+                  drawCircle(Color.White.copy(alpha = 0.18f + 0.6f * tw), rad, Offset(x, y))
+              }
+
+              // 4) bintang yang tersedot dari pinggir layar
+              val rMax = hypot(max(c.x, w - c.x), max(c.y, h - c.y)) * 1.1f
+              val r0 = r * 0.9f
+              for (i in 0 until FALLING_STARS) {
+                  val fi = i.toFloat()
+                  val speed = 0.040f + 0.055f * rnd(fi, 2.2f)
+                  val ph = t * speed + rnd(fi, 4.4f)
+                  val cyc = floor(ph)
+                  val p = ph - cyc
+                  val a0 = rnd(fi, cyc + 6.1f) * TAU
+
+                  fun at(q: Float): Offset {
+                      val rad = r0 + (rMax - r0) * (1f - q).pow(0.55f) // makin dekat makin cepat
+                      val ang = a0 + 1.1f * q.pow(2.2f)                // makin dekat makin berputar
+                      return Offset(c.x + cos(ang) * rad, c.y + sin(ang) * rad)
+                  }
+
+                  val head = at(p)
+                  val tail = at((p - 0.045f).coerceAtLeast(0f))
+                  val fadeIn = (p * 14f).coerceIn(0f, 1f)
+                  val fadeOut = (1f - (p - 0.88f) / 0.12f).coerceIn(0f, 1f)
+                  val a = fadeIn * fadeOut
+                  val near = p.pow(2.5f)
+                  val col = lerp(Color(0xFFFFFFFF), Color(0xFFB45CFF), near)
+                  val sw = (1.1f + 1.6f * rnd(fi, 7.7f)) * density * (1f - 0.45f * near)
+                  drawLine(col.copy(alpha = a * 0.5f), tail, head, sw, StrokeCap.Round)
+                  drawCircle(col.copy(alpha = a), sw * 0.75f, head)
+              }
+
+              // 5) blackhole
+              val pulse = 1f + 0.05f * sin(t * 1.7f)
+              val glowR = r * 6f * pulse
+              drawCircle(
+                  brush = Brush.radialGradient(
+                      listOf(Color(0xAAB026FF), Color(0x552A0A5A), Color.Transparent),
+                      center = c,
+                      radius = glowR
+                  ),
+                  radius = glowR,
+                  center = c
+              )
+
+              val diskR = r * 2.35f
+              val diskW = r * 0.95f
+              val sweep = Brush.sweepGradient(
+                  0.00f to Color(0x00B24BFF),
+                  0.16f to Color(0xFFB24BFF),
+                  0.30f to Color(0xFFFFFFFF),
+                  0.46f to Color(0xCCC04BFF),
+                  0.70f to Color(0x554B1A8F),
+                  0.92f to Color(0x00B24BFF),
+                  1.00f to Color(0x00B24BFF),
+                  center = c
+              )
+
+              fun disk(alpha: Float, widthMul: Float) {
+                  withTransform({
+                      rotate(-14f, c)
+                      scale(1f, 0.27f, c)
+                      rotate(t * 38f, c)
+                  }) {
+                      drawCircle(
+                          brush = sweep,
+                          radius = diskR,
+                          center = c,
+                          alpha = alpha,
+                          style = Stroke(width = diskW * widthMul)
+                      )
+                  }
+              }
+
+              disk(0.35f, 1.7f) // pendar
+              disk(1f, 1f)      // piringan (bagian belakang)
+
+              // cahaya piringan yang melengkung di atas lubang
+              drawArc(
+                  brush = Brush.verticalGradient(
+                      listOf(Color(0xFFFFE8FF), Color(0xFFB24BFF), Color(0x00B24BFF)),
+                      startY = c.y - r * 1.5f,
+                      endY = c.y + r * 0.2f
+                  ),
+                  startAngle = 188f,
+                  sweepAngle = 164f,
+                  useCenter = false,
+                  topLeft = Offset(c.x - r * 1.14f, c.y - r * 1.14f),
+                  size = Size(r * 2.28f, r * 2.28f),
+                  style = Stroke(width = r * 0.14f, cap = StrokeCap.Round)
+              )
+
+              // event horizon
+              drawCircle(Color.Black, r, c)
+              drawCircle(Color(0xFFD8B4FE), r, c, style = Stroke(width = r * 0.045f))
+
+              // bagian depan piringan melintas di depan lubang
+              clipRect(top = c.y) { disk(1f, 1f) }
+          }
+          DREAM_EOF_3
+          # ===== lanjut ke bagian 4 =====
+# ===== bagian 4 =====
+      - name: Tulis kode Kotlin (bagian 2)
+        run: |
+          set -e
+          mkdir -p app/src/main/java/com/dream/boost
+          cat > app/src/main/java/com/dream/boost/Screens.kt <<'DREAM_EOF_4'
+          package com.dream.boost
+
+          import android.content.Context
+          import android.content.Intent
+          import android.content.SharedPreferences
+          import android.net.Uri
+          import androidx.compose.foundation.background
+          import androidx.compose.foundation.border
+          import androidx.compose.foundation.clickable
+          import androidx.compose.foundation.layout.Arrangement
+          import androidx.compose.foundation.layout.Box
+          import androidx.compose.foundation.layout.Column
+          import androidx.compose.foundation.layout.ColumnScope
+          import androidx.compose.foundation.layout.Row
+          import androidx.compose.foundation.layout.Spacer
+          import androidx.compose.foundation.layout.fillMaxSize
+          import androidx.compose.foundation.layout.fillMaxWidth
+          import androidx.compose.foundation.layout.height
+          import androidx.compose.foundation.layout.imePadding
+          import androidx.compose.foundation.layout.padding
+          import androidx.compose.foundation.layout.size
+          import androidx.compose.foundation.layout.systemBarsPadding
+          import androidx.compose.foundation.layout.width
+          import androidx.compose.foundation.rememberScrollState
+          import androidx.compose.foundation.shape.CircleShape
+          import androidx.compose.foundation.shape.RoundedCornerShape
+          import androidx.compose.foundation.text.KeyboardActions
+          import androidx.compose.foundation.text.KeyboardOptions
+          import androidx.compose.foundation.verticalScroll
+          import androidx.compose.material3.OutlinedTextField
+          import androidx.compose.material3.OutlinedTextFieldDefaults
+          import androidx.compose.material3.Switch
+          import androidx.compose.material3.SwitchDefaults
+          import androidx.compose.material3.Text
+          import androidx.compose.runtime.Composable
+          import androidx.compose.runtime.LaunchedEffect
+          import androidx.compose.runtime.State
+          import androidx.compose.runtime.getValue
+          import androidx.compose.runtime.mutableStateListOf
+          import androidx.compose.runtime.mutableStateMapOf
+          import androidx.compose.runtime.mutableStateOf
+          import androidx.compose.runtime.produceState
+          import androidx.compose.runtime.remember
+          import androidx.compose.runtime.rememberCoroutineScope
+          import androidx.compose.runtime.saveable.rememberSaveable
+          import androidx.compose.runtime.setValue
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.draw.clip
+          import androidx.compose.ui.geometry.Offset
+          import androidx.compose.ui.graphics.Brush
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.graphics.Shadow
+          import androidx.compose.ui.platform.LocalContext
+          import androidx.compose.ui.text.TextStyle
+          import androidx.compose.ui.text.font.FontFamily
+          import androidx.compose.ui.text.font.FontWeight
+          import androidx.compose.ui.text.input.ImeAction
+          import androidx.compose.ui.text.input.KeyboardType
+          import androidx.compose.ui.text.input.PasswordVisualTransformation
+          import androidx.compose.ui.text.input.VisualTransformation
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.unit.sp
+          import kotlinx.coroutines.CoroutineScope
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.delay
+          import kotlinx.coroutines.launch
+          import kotlinx.coroutines.withContext
+
+          // Ganti password di sini.
+          const val PASSWORD = "dimasnjoy"
+
+          private val Violet = Color(0xFFA855F7)
+          private val VioletDeep = Color(0xFF6D28D9)
+          private val Magenta = Color(0xFFC026D3)
+          private val Lav = Color(0xFFE9D5FF)
+          private val Amber = Color(0xFFFBBF24)
+          private val Mint = Color(0xFF34D399)
+          private val Rose = Color(0xFFF472B6)
+          private val CardBg = Color(0x99100020)
+          private val CardBorder = Color(0x55A855F7)
+
+          // ------------------------------------------------------------------
+          // Data fitur (key = nama saklar di skrip)
+          // ------------------------------------------------------------------
+
+          data class Feature(
+              val key: String,
+              val title: String,
+              val desc: String,
+              val default: Boolean,
+              val group: String,
+              val parent: String? = null,
+              val warn: String? = null
+          )
+
+          private const val G1 = "Perlindungan dan OTG"
+          private const val G2 = "Performa dan game"
+          private const val G3 = "Sistem dan pembersihan"
+
+          val FEATURES = listOf(
+              Feature("F_PHANTOM", "Phantom Process Killer mati", "Android tidak lagi membunuh proses anak (Shizuku, mapper, terminal).", true, G1),
+              Feature("F_DOZE", "Whitelist Doze dan baterai", "App dilindungi lolos Doze, standby, dan batas baterai.", true, G1),
+              Feature("F_OTG", "OTG bypass", "Jaga GG Mouse Pro, Nebula, SensiX, Red Corner, WhatsApp, dan Discord.", true, G1),
+              Feature("F_KBD", "Sembunyikan keyboard layar", "Keyboard layar tidak muncul saat keyboard OTG terpasang.", true, G1, parent = "F_OTG"),
+              Feature("F_FREEZER", "Anti-kill latar belakang", "Matikan freezer app cache dan naikkan batas proses cache.", true, G1),
+
+              Feature("F_HZ", "Kunci refresh rate maksimum", "Layar dikunci ke Hz tertinggi yang didukung.", true, G2),
+              Feature("F_GAME", "Mode performa game", "Free Fire, FF MAX, Mobile Legends, plus fixed performance.", true, G2),
+              Feature("F_DND", "Mode jangan ganggu", "Notifikasi dibungkam selama main.", true, G2),
+              Feature("F_NET", "Jaringan low-latency", "Wi-Fi low-latency dan hentikan scan di latar belakang.", true, G2),
+              Feature("F_ANIM", "Animasi sistem 0,5x", "Transisi layar lebih cepat.", true, G2),
+
+              Feature("F_DEXSUP", "Dukungan DeX dan freeform", "Jendela desktop dan paksa app bisa di-resize.", true, G3),
+              Feature("F_STAYON", "Layar tetap menyala saat dicas", "Opsional.", false, G3, parent = "F_DEXSUP"),
+              Feature("F_GOS", "Matikan Samsung GOS", "Anti-throttle mati agar performa tidak diturunkan.", true, G3,
+                  warn = "HP bisa lebih panas. Otomatis dilewati kalau suhu sudah 42 C atau lebih."),
+              Feature("F_NOBG", "Blok Play Store di latar belakang", "Cegah unduhan dan update otomatis saat main.", true, G3),
+              Feature("F_DEX", "Kompilasi AOT alat dan game", "Pertama kali bisa agak lama.", true, G3),
+              Feature("F_RAM", "Bersihkan RAM dan cache", "Tutup proses latar belakang. App dilindungi tidak disentuh.", true, G3),
+              Feature("F_KILL", "Force-stop app lain", "Paling agresif. App dilindungi dan app yang sedang dibuka aman.", true, G3, parent = "F_RAM")
+          )
+
+          private val DND_CHOICES = listOf("priority" to "Prioritas", "alarms" to "Alarm saja", "none" to "Senyap total")
+          private val GAME_CHOICES = listOf(
+              "" to "Tidak",
+              "com.dts.freefireth" to "Free Fire",
+              "com.dts.freefiremax" to "FF MAX",
+              "com.mobile.legends" to "ML"
+          )
+
+          // ------------------------------------------------------------------
+          // State aplikasi
+          // ------------------------------------------------------------------
+
+          class AppState(private val prefs: SharedPreferences) {
+              val enabled = mutableStateMapOf<String, Boolean>().apply {
+                  FEATURES.forEach { put(it.key, prefs.getBoolean(it.key, it.default)) }
+              }
+              var dnd by mutableStateOf(prefs.getString("dnd", "priority") ?: "priority")
+              var game by mutableStateOf(prefs.getString("game", "") ?: "")
+              var running by mutableStateOf(false)
+              val log = mutableStateListOf<String>()
+
+              fun isOn(key: String): Boolean = enabled[key] == true
+
+              fun set(key: String, v: Boolean) {
+                  enabled[key] = v
+                  prefs.edit().putBoolean(key, v).apply()
+              }
+
+              fun pickDnd(v: String) {
+                  dnd = v
+                  prefs.edit().putString("dnd", v).apply()
+              }
+
+              fun pickGame(v: String) {
+                  game = v
+                  prefs.edit().putString("game", v).apply()
+              }
+
+              /** Kenpol = semua default aktif. Aman = tanpa force-stop, GOS, dan blok background. */
+              fun preset(safe: Boolean) {
+                  FEATURES.forEach { set(it.key, it.default) }
+                  if (safe) {
+                      set("F_KILL", false)
+                      set("F_GOS", false)
+                      set("F_NOBG", false)
+                  }
+              }
+
+              /** mode: "" = boost, "status", "off" */
+              fun run(ctx: Context, scope: CoroutineScope, mode: String) {
+                  if (running) return
+                  running = true
+                  log.clear()
+                  val flags = FEATURES.associate { it.key to isOn(it.key) }
+                  val d = dnd
+                  val g = game
+                  scope.launch {
+                      val code = withContext(Dispatchers.IO) {
+                          try {
+                              ShizukuShell.pushScript(ctx)
+                              ShizukuShell.runScript(mode, flags, d, g) { line ->
+                                  scope.launch(Dispatchers.Main) { log.add(line) }
+                              }
+                          } catch (t: Throwable) {
+                              scope.launch(Dispatchers.Main) { log.add("ERROR: ${t.javaClass.simpleName}: ${t.message}") }
+                              -1
+                          }
+                      }
+                      log.add("-- selesai (kode $code) --")
+                      running = false
+                  }
+              }
+          }
+
+          enum class SzState { NOT_RUNNING, NO_PERMISSION, READY }
+
+          @Composable
+          fun rememberShizukuState(): State<SzState> = produceState(SzState.NOT_RUNNING) {
+              while (true) {
+                  value = withContext(Dispatchers.IO) {
+                      when {
+                          !ShizukuShell.binderUp() -> SzState.NOT_RUNNING
+                          ShizukuShell.granted() -> SzState.READY
+                          else -> SzState.NO_PERMISSION
+                      }
+                  }
+                  delay(900)
+              }
+          }
+
+          // ------------------------------------------------------------------
+          // Root
+          // ------------------------------------------------------------------
+
+          @Composable
+          fun DreamApp() {
+              val ctx = LocalContext.current.applicationContext
+              val st = remember { AppState(ctx.getSharedPreferences("dream", Context.MODE_PRIVATE)) }
+              var unlocked by rememberSaveable { mutableStateOf(false) }
+              val sz by rememberShizukuState()
+
+              val stage = when {
+                  !unlocked -> 0
+                  sz != SzState.READY -> 1
+                  else -> 2
+              }
+              val holeY = when (stage) {
+                  0 -> 0.27f
+                  1 -> 0.24f
+                  else -> 0.13f
+              }
+              val holeScale = if (stage == 2) 0.7f else 1f
+
+              Box(Modifier.fillMaxSize().background(Color.Black)) {
+                  SpaceBackground(holeY = holeY, holeScale = holeScale)
+                  when (stage) {
+                      0 -> LoginScreen(onOk = { unlocked = true })
+                      1 -> ShizukuGate(sz)
+                      else -> MainScreen(st)
+                  }
+              }
+          }
+
+          // ------------------------------------------------------------------
+          // Komponen kecil
+          // ------------------------------------------------------------------
+
+          @Composable
+          private fun Wordmark(size: Int) {
+              Text(
+                  "Dream",
+                  fontSize = size.sp,
+                  fontWeight = FontWeight.Black,
+                  letterSpacing = (size / 6).sp,
+                  color = Color.White,
+                  style = TextStyle(shadow = Shadow(color = Violet, offset = Offset.Zero, blurRadius = 36f))
+              )
+          }
+
+          @Composable
+          private fun Glass(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+              val shape = RoundedCornerShape(18.dp)
+              Column(
+                  modifier
+                      .clip(shape)
+                      .background(CardBg)
+                      .border(1.dp, CardBorder, shape)
+                      .padding(16.dp),
+                  content = content
+              )
+          }
+
+          @Composable
+          private fun GlowButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+              val shape = RoundedCornerShape(14.dp)
+              val fill = if (enabled) {
+                  Brush.horizontalGradient(listOf(VioletDeep, Magenta))
+              } else {
+                  Brush.horizontalGradient(listOf(Color(0xFF3B2A52), Color(0xFF3B2A52)))
+              }
+              Box(
+                  modifier
+                      .clip(shape)
+                      .background(fill)
+                      .clickable(enabled = enabled, onClick = onClick)
+                      .padding(vertical = 15.dp, horizontal = 20.dp),
+                  contentAlignment = Alignment.Center
+              ) {
+                  Text(text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+              }
+          }
+
+          @Composable
+          private fun OutlineButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+              val shape = RoundedCornerShape(14.dp)
+              Box(
+                  modifier
+                      .clip(shape)
+                      .border(1.dp, if (enabled) Violet else CardBorder, shape)
+                      .background(Color(0x22000000))
+                      .clickable(enabled = enabled, onClick = onClick)
+                      .padding(vertical = 12.dp, horizontal = 12.dp),
+                  contentAlignment = Alignment.Center
+              ) {
+                  Text(
+                      text,
+                      color = if (enabled) Lav else Color(0x66E9D5FF),
+                      fontWeight = FontWeight.SemiBold,
+                      fontSize = 14.sp
+                  )
+              }
+          }
+
+          @Composable
+          private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
+              val shape = RoundedCornerShape(50)
+              Text(
+                  text,
+                  color = if (selected) Color.White else Lav,
+                  fontSize = 13.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  modifier = Modifier
+                      .clip(shape)
+                      .background(if (selected) VioletDeep else Color(0x33FFFFFF))
+                      .border(1.dp, if (selected) Violet else CardBorder, shape)
+                      .clickable(onClick = onClick)
+                      .padding(horizontal = 14.dp, vertical = 8.dp)
+              )
+          }
+
+          @Composable
+          private fun CheckRow(ok: Boolean, text: String) {
+              Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                  Box(Modifier.size(10.dp).clip(CircleShape).background(if (ok) Mint else Rose))
+                  Spacer(Modifier.width(10.dp))
+                  Text(text, color = Lav, fontSize = 15.sp)
+              }
+          }
+
+          @Composable
+          private fun FeatureRow(f: Feature, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+              Row(
+                  Modifier
+                      .fillMaxWidth()
+                      .padding(start = if (f.parent != null) 16.dp else 0.dp, top = 9.dp, bottom = 9.dp),
+                  verticalAlignment = Alignment.CenterVertically
+              ) {
+                  Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                      Text(
+                          f.title,
+                          color = if (enabled) Color.White else Color(0x80FFFFFF),
+                          fontWeight = FontWeight.SemiBold,
+                          fontSize = 15.sp
+                      )
+                      Text(
+                          f.desc,
+                          color = Lav.copy(alpha = if (enabled) 0.75f else 0.4f),
+                          fontSize = 12.sp,
+                          lineHeight = 16.sp
+                      )
+                      if (f.warn != null) {
+                          Text(f.warn, color = Amber, fontSize = 11.sp, lineHeight = 15.sp)
+                      }
+                  }
+                  Switch(
+                      checked = checked,
+                      onCheckedChange = onChange,
+                      enabled = enabled,
+                      colors = SwitchDefaults.colors(
+                          checkedThumbColor = Color.White,
+                          checkedTrackColor = Violet,
+                          uncheckedThumbColor = Lav,
+                          uncheckedTrackColor = Color(0x44000000),
+                          uncheckedBorderColor = Color(0x66A855F7)
+                      )
+                  )
+              }
+          }
+
+          // ------------------------------------------------------------------
+          // Layar 1: password
+          // ------------------------------------------------------------------
+
+          @Composable
+          private fun LoginScreen(onOk: () -> Unit) {
+              var pass by remember { mutableStateOf("") }
+              var show by remember { mutableStateOf(false) }
+              var wrong by remember { mutableStateOf(false) }
+
+              fun submit() {
+                  if (pass.trim() == PASSWORD) onOk() else wrong = true
+              }
+
+              Column(
+                  Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(24.dp),
+                  verticalArrangement = Arrangement.Bottom,
+                  horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                  Wordmark(46)
+                  Spacer(Modifier.height(6.dp))
+                  Text("Masukkan password untuk membuka Dream.", color = Lav.copy(alpha = 0.8f), fontSize = 14.sp)
+                  Spacer(Modifier.height(20.dp))
+                  Glass(Modifier.fillMaxWidth()) {
+                      OutlinedTextField(
+                          value = pass,
+                          onValueChange = { pass = it; wrong = false },
+                          label = { Text("Password") },
+                          singleLine = true,
+                          modifier = Modifier.fillMaxWidth(),
+                          visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                          keyboardActions = KeyboardActions(onDone = { submit() }),
+                          trailingIcon = {
+                              Text(
+                                  if (show) "Sembunyikan" else "Lihat",
+                                  color = Violet,
+                                  fontSize = 12.sp,
+                                  modifier = Modifier.clickable { show = !show }.padding(10.dp)
+                              )
+                          },
+                          colors = OutlinedTextFieldDefaults.colors(
+                              focusedTextColor = Color.White,
+                              unfocusedTextColor = Color.White,
+                              cursorColor = Violet,
+                              focusedBorderColor = Violet,
+                              unfocusedBorderColor = Color(0x66A855F7),
+                              focusedLabelColor = Violet,
+                              unfocusedLabelColor = Lav
+                          )
+                      )
+                      if (wrong) {
+                          Spacer(Modifier.height(8.dp))
+                          Text("Password salah. Coba lagi.", color = Rose, fontSize = 13.sp)
+                      }
+                      Spacer(Modifier.height(16.dp))
+                      GlowButton("Masuk", Modifier.fillMaxWidth()) { submit() }
+                  }
+              }
+          }
+
+          // ------------------------------------------------------------------
+          // Layar 2: gerbang Shizuku
+          // ------------------------------------------------------------------
+
+          @Composable
+          private fun ShizukuGate(sz: SzState) {
+              val ctx = LocalContext.current
+              var installed by remember { mutableStateOf(ShizukuShell.installed(ctx)) }
+              LaunchedEffect(Unit) {
+                  while (true) {
+                      installed = ShizukuShell.installed(ctx)
+                      delay(1500)
+                  }
+              }
+              val running = sz != SzState.NOT_RUNNING
+              val denied = remember(sz) { sz == SzState.NO_PERMISSION && ShizukuShell.permanentlyDenied() }
+
+              fun openShizuku() {
+                  ctx.packageManager.getLaunchIntentForPackage(ShizukuShell.SHIZUKU_PKG)?.let { ctx.startActivity(it) }
+              }
+
+              Column(
+                  Modifier.fillMaxSize().systemBarsPadding().padding(24.dp),
+                  verticalArrangement = Arrangement.Bottom,
+                  horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                  Wordmark(46)
+                  Spacer(Modifier.height(6.dp))
+                  Text("Aktifkan Shizuku untuk masuk.", color = Lav.copy(alpha = 0.8f), fontSize = 14.sp)
+                  Spacer(Modifier.height(20.dp))
+                  Glass(Modifier.fillMaxWidth()) {
+                      CheckRow(installed, "Shizuku terpasang")
+                      CheckRow(running, "Shizuku sedang berjalan")
+                      CheckRow(false, "Dream punya izin Shizuku")
+                      Spacer(Modifier.height(10.dp))
+
+                      val hint = when {
+                          !installed -> "Pasang Shizuku dulu, lalu jalankan lewat Debugging nirkabel atau ADB."
+                          !running -> "Buka Shizuku lalu tekan Mulai. Dream lanjut otomatis begitu Shizuku aktif."
+                          denied -> "Izin pernah ditolak. Buka Shizuku, pilih aplikasi yang diotorisasi, lalu izinkan Dream."
+                          else -> "Tekan Beri izin lalu setujui di dialog Shizuku."
+                      }
+                      Text(hint, color = Lav.copy(alpha = 0.8f), fontSize = 13.sp, lineHeight = 18.sp)
+                      if (!running) {
+                          Spacer(Modifier.height(8.dp))
+                          Text(
+                              "Lewat ADB: adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh",
+                              color = Violet,
+                              fontSize = 11.sp,
+                              lineHeight = 15.sp,
+                              fontFamily = FontFamily.Monospace
+                          )
+                      }
+                      Spacer(Modifier.height(16.dp))
+
+                      when {
+                          !installed -> GlowButton("Unduh Shizuku", Modifier.fillMaxWidth()) {
+                              ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/RikkaApps/Shizuku/releases")))
+                          }
+                          !running -> GlowButton("Buka Shizuku", Modifier.fillMaxWidth()) { openShizuku() }
+                          else -> {
+                              GlowButton("Beri izin", Modifier.fillMaxWidth()) { ShizukuShell.requestPermission() }
+                              Spacer(Modifier.height(8.dp))
+                              OutlineButton("Buka Shizuku", Modifier.fillMaxWidth()) { openShizuku() }
+                          }
+                      }
+                  }
+              }
+          }
+
+          // ------------------------------------------------------------------
+          // Layar 3: utama
+          // ------------------------------------------------------------------
+
+          @Composable
+          private fun MainScreen(st: AppState) {
+              val ctx = LocalContext.current.applicationContext
+              val scope = rememberCoroutineScope()
+
+              Column(
+                  Modifier
+                      .fillMaxSize()
+                      .systemBarsPadding()
+                      .verticalScroll(rememberScrollState())
+                      .padding(horizontal = 16.dp),
+                  verticalArrangement = Arrangement.spacedBy(12.dp)
+              ) {
+                  Spacer(Modifier.height(150.dp))
+
+                  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                      Wordmark(30)
+                      Spacer(Modifier.weight(1f))
+                      Row(
+                          Modifier
+                              .clip(RoundedCornerShape(50))
+                              .background(Color(0x3334D399))
+                              .padding(horizontal = 12.dp, vertical = 6.dp),
+                          verticalAlignment = Alignment.CenterVertically
+                      ) {
+                          Box(Modifier.size(8.dp).clip(CircleShape).background(Mint))
+                          Spacer(Modifier.width(8.dp))
+                          Text("Shizuku aktif", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                      }
+                  }
+
+                  Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                      OutlineButton("Kenpol: semua", Modifier.weight(1f), !st.running) { st.preset(false) }
+                      OutlineButton("Mode aman", Modifier.weight(1f), !st.running) { st.preset(true) }
+                  }
+
+                  FEATURES.groupBy { it.group }.forEach { (group, items) ->
+                      Text(
+                          group,
+                          color = Lav,
+                          fontSize = 14.sp,
+                          fontWeight = FontWeight.Bold,
+                          modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                      )
+                      Glass(Modifier.fillMaxWidth()) {
+                          items.forEachIndexed { i, f ->
+                              if (i > 0 && f.parent == null) {
+                                  Box(Modifier.fillMaxWidth().height(1.dp).background(CardBorder))
+                              }
+                              val parentOn = f.parent == null || st.isOn(f.parent)
+                              FeatureRow(f, st.isOn(f.key) && parentOn, parentOn) { st.set(f.key, it) }
+                              if (f.key == "F_DND" && st.isOn("F_DND")) {
+                                  Row(
+                                      Modifier.padding(bottom = 10.dp),
+                                      horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                  ) {
+                                      DND_CHOICES.forEach { (v, label) -> Chip(label, st.dnd == v) { st.pickDnd(v) } }
+                                  }
+                              }
+                          }
+                      }
+                  }
+
+                  Text(
+                      "Buka game setelah boost",
+                      color = Lav,
+                      fontSize = 14.sp,
+                      fontWeight = FontWeight.Bold,
+                      modifier = Modifier.padding(start = 4.dp, top = 6.dp)
+                  )
+                  Glass(Modifier.fillMaxWidth()) {
+                      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                          GAME_CHOICES.forEach { (v, label) -> Chip(label, st.game == v) { st.pickGame(v) } }
+                      }
+                  }
+
+                  Spacer(Modifier.height(4.dp))
+                  GlowButton(
+                      if (st.running) "Sedang berjalan..." else "Jalankan boost",
+                      Modifier.fillMaxWidth(),
+                      enabled = !st.running
+                  ) { st.run(ctx, scope, "") }
+
+                  Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                      OutlineButton("Status", Modifier.weight(1f), !st.running) { st.run(ctx, scope, "status") }
+                      OutlineButton("Kembalikan", Modifier.weight(1f), !st.running) { st.run(ctx, scope, "off") }
+                  }
+                  if (st.running) {
+                      OutlineButton("Hentikan", Modifier.fillMaxWidth()) { ShizukuShell.stop() }
+                  }
+
+                  Glass(Modifier.fillMaxWidth()) {
+                      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                          Text("Log", color = Lav, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                          Spacer(Modifier.weight(1f))
+                          Text(
+                              "Bersihkan",
+                              color = Violet,
+                              fontSize = 12.sp,
+                              modifier = Modifier.clickable(enabled = !st.running) { st.log.clear() }.padding(6.dp)
+                          )
+                      }
+                      val logScroll = rememberScrollState()
+                      LaunchedEffect(st.log.size) { logScroll.animateScrollTo(logScroll.maxValue) }
+                      Box(Modifier.fillMaxWidth().height(260.dp).verticalScroll(logScroll)) {
+                          Text(
+                              if (st.log.isEmpty()) "Belum ada output. Tekan Jalankan boost atau Status." else st.log.joinToString("\n"),
+                              color = Color(0xFFD8B4FE),
+                              fontFamily = FontFamily.Monospace,
+                              fontSize = 11.sp,
+                              lineHeight = 15.sp
+                          )
+                      }
+                  }
+                  Spacer(Modifier.height(24.dp))
+              }
+          }
+          DREAM_EOF_4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build APK
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk Dream.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Dream-APK
+          path: Dream.apk
